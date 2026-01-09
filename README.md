@@ -1,4 +1,4 @@
-# GrandLineRun - http://one-piece-game-mh245882.s3-website-us-east-1.amazonaws.com
+# GrandLineRun - http://one-piece-game-mh245882.s3-website-us-east-1.amazonaws.com //The bucket linked here no longer exists. Enjoy the python version for the time being.
 Grand Line Run is a multilevel web application designed to display the efficiency of serverless cloud-native architectures.
 
 1. Project Overview:
