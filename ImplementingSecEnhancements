@@ -1,0 +1,4 @@
+Part of the future developments roadmap set in the original project's research report mentioned a shift from insecure http static website hosting
+over to https. This will be done by placing the Amazon S3 bucket behind Cloudfront, whatever that means lol. The required steps will be documented below.
+
+1.  Getting started with a cloudfront distribution: 
