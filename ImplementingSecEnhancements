@@ -7,4 +7,4 @@ over to https. This will be done by placing the Amazon S3 bucket behind Cloudfro
 - Configured CloudFront's WAF to protect against attacks.
 - Enabled DDoS protection: AWS learns your application pattern, letting it distinguish between standard traffic surges and attacks.
 - Setting the distribution origin to the S3 bucket automatically creates a corresponding origin access policy (OAC). 
-
+- Had to set the root object to index.html so cloudfront knows how to access the application's assets.
