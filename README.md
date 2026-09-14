@@ -1,4 +1,4 @@
-# GrandLineRun - Enjoy the python version as well! Here is the URL to the online version - http://grand-line-items.s3-website-us-east-1.amazonaws.com/
+# GrandLineRun - Enjoy the python version as well! Here is the URL to the secure online version - d101y1rm1znrp0.cloudfront.net
 Grand Line Run is a multilevel web application designed to display the efficiency of serverless cloud-native architectures.
 
 1. Project Overview:
