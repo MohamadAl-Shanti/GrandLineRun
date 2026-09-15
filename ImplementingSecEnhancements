@@ -11,3 +11,4 @@ over to https. This will be done by placing the Amazon S3 bucket behind Cloudfro
 
 
 ## CLOUDFRONT IS USING REDIRECT HTTP -> HTTPS VIEWER PROTOCOL
+## Try to build a pipeline that automatically refreshes the cloudfront cache any time a file update is made.
