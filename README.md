@@ -17,3 +17,9 @@ Grand Line Run is a multilevel web application designed to display the efficienc
 
 
 A small side note. While the focus of this project was to learn about development of cloud-native applications, the game itself plays much better in its original form which was programmed via Python's game development library, Pygame. Since this library does not have native web hosting I decided to pivot to JS. I would recommend that anybody looking to enjoy themselves try the python version which is available alongside the rest of the application's code.
+
+
+## When you've fronted your application with a CloudFront distribution, to see any changes to the application immediately, you must invalidate the distribution's cache manually through the AWS CloudFront console.
+
+
+
