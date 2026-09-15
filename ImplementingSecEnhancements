@@ -10,4 +10,4 @@ over to https. This will be done by placing the Amazon S3 bucket behind Cloudfro
 - Had to set the root object to index.html so cloudfront knows how to access the application's assets.
 
 
-CLOUDFRONT IS USING REDIRECT HTTP -> HTTPS VIEWER PROTOCOL
+## CLOUDFRONT IS USING REDIRECT HTTP -> HTTPS VIEWER PROTOCOL
