@@ -13,3 +13,7 @@ over to https. This will be done by placing the Amazon S3 bucket behind Cloudfro
 ## CLOUDFRONT IS USING REDIRECT HTTP -> HTTPS VIEWER PROTOCOL
 ## Currently, having to go in and manually invalidate the distribution's edge cache via the AWS CloudFront console.
 ## Try to build a pipeline that automatically refreshes the cloudfront cache any time a file update is made.
+
+
+CITATIONS: 
+1. Automating CloudFront Cache Invalidation - Andrey Norin
