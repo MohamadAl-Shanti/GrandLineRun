@@ -49,10 +49,11 @@ jobs:
             --content-type "text/html" \
             --cache-control "no-cache,must-revalidate"
 
-      # Only index.html needs invalidating. The versioned JS and assets are
-      # already unique cache keys, so they can never go stale.
+      # index.html and assets must be invalidated: index.html carries the ?v=
+      # version strings, and image filenames never change so their cached
+      # copies would otherwise persist for the full year.
       - name: Invalidate CloudFront
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ vars.CLOUDFRONT_DIST_ID }} \
-            --paths "/index.html" "/" "/assets/*"
+            --paths "/index.html" "/" "/assets/*" "/js/*"
