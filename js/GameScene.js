@@ -58,11 +58,52 @@ class GameScene extends Phaser.Scene {
         // --- 5. UI --------------------------------------------------------
         this.scoreText = this.makeText(10, 10, '', 60, '#FFFFFF').setDepth(10);
         this.refreshScoreText();
+
+        // --- 6. HITBOX OVERLAY --------------------------------------------
+        // Depth 6 sits above the sprites (player is 5) but below the
+        // game-over overlay (11), so it never draws over the failure screen.
+        this.hitboxGfx = this.add.graphics().setDepth(6);
+        this.showHitboxes = SHOW_HITBOXES;
+
+        this.input.keyboard.on('keydown-H', () => {
+            this.showHitboxes = !this.showHitboxes;
+        });
     }
 
     update() {
-        if (this.isGameOver) return;
-        this.handlePlayerMovement();
+        if (!this.isGameOver) {
+            this.handlePlayerMovement();
+        }
+        // Keeps drawing after death so the fatal overlap stays visible.
+        this.drawHitboxes();
+    }
+
+    // ====================================================================
+    // HITBOX OVERLAY
+    // ====================================================================
+
+    // Draws the ACTUAL physics bodies rather than a guess at where they are.
+    // body.x / body.y are the body's top-left in world coordinates, so what
+    // is drawn here is exactly what the collision test uses. If a box looks
+    // wrong, the hitbox IS wrong.
+    drawHitboxes() {
+        const g = this.hitboxGfx;
+        g.clear();
+        if (!this.showHitboxes) return;
+
+        const box = (body, color) => {
+            if (!body) return;
+            g.fillStyle(color, 0.15);
+            g.fillRect(body.x, body.y, body.width, body.height);
+            g.lineStyle(2, color, 0.9);
+            g.strokeRect(body.x, body.y, body.width, body.height);
+        };
+
+        box(this.player.body, 0x00FF88);                                 // green
+        this.enemies.getChildren().forEach(e => box(e.body, 0xFF3355));  // red
+        this.treasures.getChildren().forEach(t => {
+            if (t.active) box(t.body, 0xFFD700);                         // gold
+        });
     }
 
     // ====================================================================

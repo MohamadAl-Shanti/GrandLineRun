@@ -28,16 +28,25 @@ const VILLAIN_FAIL_SIZE = 250;
 // Fractions are version-proof. Phaser computes body width as
 // sourceWidth * scaleX, so passing frameWidth * fraction always lands on
 // displayWidth * fraction, regardless of the source PNG's resolution and
-// regardless of whether the body's cached scale has refreshed yet. The
-// previous approach (dividing screen pixels by sprite.scaleX) could read a
-// stale scale on the frame a sprite was created or re-skinned.
+// regardless of whether the body's cached scale has refreshed yet.
 //
-// Lower a value to make that entity more forgiving. 0.8 on the hostiles is
-// worth trying if full-size villains feel brutal, since the PNGs have
-// transparent padding and you can otherwise die to empty pixels.
+// Collision fires when the two boxes touch, so the trigger distance between
+// centres is the SUM of both half-widths:
+//
+//   player 1.0 + hostile 0.65  ->  (135 + 88) / 2  = 111px
+//   player 1.0 + treasure 1.0  ->  (135 + 100) / 2 = 118px
+//
+// The villains are reduced because their PNGs carry transparent padding,
+// so at 1.0 you die to empty pixels on both sprites at once. The treasure
+// stays at 1.0 so pickups remain generous.
 const PLAYER_HITBOX_SCALE = 1.0;
-const HOSTILE_HITBOX_SCALE = 1.0;
+const HOSTILE_HITBOX_SCALE = 0.65;
 const TREASURE_HITBOX_SCALE = 1.0;
+
+// Draws translucent boxes over the real collision bodies: green for the
+// player, red for hostiles, gold for the treasure. Press H in-game to
+// toggle without redeploying.
+const SHOW_HITBOXES = true;
 
 // --- Speeds -------------------------------------------------------------
 // Pygame ran a locked 60fps loop, so px/frame * 60 = px/sec.
