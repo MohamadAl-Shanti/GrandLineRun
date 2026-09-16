@@ -6,7 +6,7 @@ class TitleScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('title_background', 'assets/background.jpg');
+        this.load.image('title_background', 'assets/arc1.jpg');
         this.load.image('treasure', 'assets/target.png');
 
         this.add.text(INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2, 'Loading...',
