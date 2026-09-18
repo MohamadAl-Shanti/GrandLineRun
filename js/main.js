@@ -58,7 +58,3 @@ const config = {
 
 // Arrow keys and space scroll the page by default, which reads as input lag
 // and can jolt the canvas out of view on a short window.
-window.addEventListener('keydown', (e) => {
-    const blocked = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'];
-    if (blocked.includes(e.code)) e.preventDefault();
-}, false);
