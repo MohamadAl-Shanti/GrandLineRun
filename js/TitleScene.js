@@ -84,17 +84,25 @@ class TitleScene extends Phaser.Scene {
         this.makeText(INTERNAL_WIDTH / 2 - 180, 430,
             'Press L to sign out', 22, '#CCCCCC').setOrigin(0.5);
 
-        // A short delay stops a SPACE held down from the failure screen
-        // launching a new run instantly.
-        this.time.delayedCall(300, () => {
-            this.input.keyboard.once('keydown-SPACE', () => {
-                this.scene.start('GameScene');
-            });
-        });
+        this.canStart = false;
+        this.time.delayedCall(300, () => { this.canStart = true; });
 
-        this.input.keyboard.once('keydown-L', () => {
-            Auth.logout();
+        this.startKey = this.input.keyboard.addKey(
+            Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+        this.input.keyboard.once('keydown-L', () => Auth.logout());
+
+        // Clicking works too, for anyone who missed the prompt.
+        this.input.on('pointerdown', () => {
+            if (this.canStart) this.scene.start('GameScene');
         });
+    }
+
+    update() {
+        if (this.canStart && this.startKey &&
+            Phaser.Input.Keyboard.JustDown(this.startKey)) {
+            this.scene.start('GameScene');
+        }
     }
 
     // ----------------------------------------------------------------
