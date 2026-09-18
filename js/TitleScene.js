@@ -1,5 +1,14 @@
 // js/TitleScene.js
 
+// The title screen is a two-column layout: a main column on the left for
+// the title and prompts, and a fixed-width leaderboard panel on the right.
+// Everything in the main column centres on MAIN_CX rather than on the
+// canvas centre, so it stays visually balanced against the panel instead
+// of being nudged left by an arbitrary offset.
+const PANEL_WIDTH = 400;
+const MAIN_CX = (INTERNAL_WIDTH - PANEL_WIDTH) / 2;   // 500
+const PANEL_CX = INTERNAL_WIDTH - (PANEL_WIDTH / 2);  // 1200
+
 class TitleScene extends Phaser.Scene {
     constructor() {
         super('TitleScene');
@@ -9,7 +18,9 @@ class TitleScene extends Phaser.Scene {
         this.load.image('title_background', 'assets/background.jpg');
         this.load.image('treasure', 'assets/target.png');
 
-        this.add.text(INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2, 'Loading...',
+        // Held as a property so create() can remove it once loading ends.
+        this.loadingText = this.add.text(
+            INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2, 'Loading...',
             { fontSize: '32px', color: '#FFFFFF' }).setOrigin(0.5);
 
         ONE_PIECE_ARCS.forEach((arc, index) => {
@@ -26,17 +37,35 @@ class TitleScene extends Phaser.Scene {
     }
 
     create() {
+        if (this.loadingText) {
+            this.loadingText.destroy();
+            this.loadingText = null;
+        }
+
+        // create() runs again on every return to this scene, so per-entry
+        // state has to be reset or stale flags leak through.
+        this.canStart = false;
+        this.redirecting = false;
+        this.startKey = null;
+
         this.add.image(INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2, 'title_background')
             .setDisplaySize(INTERNAL_WIDTH, INTERNAL_HEIGHT)
             .setDepth(-1);
 
-        // Darkens the art so text stays readable over any background.
-        this.add.rectangle(0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT, 0x000000, 0.35)
+        // Dim the busy artwork so text stays legible.
+        this.add.rectangle(0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT, 0x000000, 0.45)
             .setOrigin(0, 0)
             .setDepth(0);
 
-        this.makeText(INTERNAL_WIDTH / 2 - 180, 150,
-            'GRAND LINE RUN', 96, '#FFFFFF').setOrigin(0.5);
+        // Darker strip behind the leaderboard so the columns read as
+        // separate regions.
+        this.add.rectangle(INTERNAL_WIDTH - PANEL_WIDTH, 0,
+            PANEL_WIDTH, INTERNAL_HEIGHT, 0x000000, 0.45)
+            .setOrigin(0, 0)
+            .setDepth(0);
+
+        this.makeText(MAIN_CX, 150, 'GRAND LINE RUN', 88, '#FFFFFF')
+            .setOrigin(0.5);
 
         if (Auth.isSignedIn()) {
             this.showSignedIn();
@@ -47,69 +76,95 @@ class TitleScene extends Phaser.Scene {
         this.renderLeaderboard();
     }
 
+    // Polling the key each frame rather than listening for a one-shot
+    // keydown. An event listener can be consumed by a stale handler or miss
+    // a press landing during a scene transition; JustDown reads the key's
+    // current state and cannot be swallowed.
+    update() {
+        if (!this.startKey) return;
+
+        if (Phaser.Input.Keyboard.JustDown(this.startKey)) {
+            if (Auth.isSignedIn()) {
+                if (this.canStart) this.scene.start('GameScene');
+            } else {
+                this.goToLogin();
+            }
+        }
+    }
+
+    goToLogin() {
+        if (this.redirecting) return;
+        this.redirecting = true;
+        Auth.login();
+    }
+
     // ----------------------------------------------------------------
-    // Signed out: nothing starts the game until they authenticate.
+    // Signed out: no path to the game until they authenticate.
     // ----------------------------------------------------------------
     showSignInPrompt() {
-        this.makeText(INTERNAL_WIDTH / 2 - 180, 300,
-            'SIGN IN TO SET SAIL', 46, '#FFD700').setOrigin(0.5);
-
-        this.makeText(INTERNAL_WIDTH / 2 - 180, 370,
-            'Press SPACE or click to sign in', 30, '#FFFFFF').setOrigin(0.5);
-
-        this.makeText(INTERNAL_WIDTH / 2 - 180, 430,
-            'An account is needed to record your score', 22, '#CCCCCC')
+        this.makeText(MAIN_CX, 330, 'SIGN IN TO SET SAIL', 48, '#FFD700')
             .setOrigin(0.5);
 
-        const goToLogin = () => {
-            if (this.redirecting) return;   // guard against double-fire
-            this.redirecting = true;
-            Auth.login();
-        };
+        this.makeText(MAIN_CX, 410, 'Press SPACE or click to sign in', 30, '#FFFFFF')
+            .setOrigin(0.5);
 
-        this.input.keyboard.once('keydown-SPACE', goToLogin);
-        this.input.once('pointerdown', goToLogin);
+        this.makeText(MAIN_CX, 470, 'An account is needed to record your score',
+            22, '#CCCCCC').setOrigin(0.5);
+
+        this.startKey = this.input.keyboard.addKey(
+            Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+        this.input.on('pointerdown', () => this.goToLogin());
     }
 
     // ----------------------------------------------------------------
-    // Signed in: normal start, plus who you are and how to sign out.
+    // Signed in: normal start, plus identity and a way out.
     // ----------------------------------------------------------------
     showSignedIn() {
-        this.makeText(INTERNAL_WIDTH / 2 - 180, 290,
-            `Welcome, ${Auth.getUsername()}`, 34, '#00FF88').setOrigin(0.5);
+        this.makeText(MAIN_CX, 300, `Welcome, ${Auth.getUsername()}`, 34, '#00FF88')
+            .setOrigin(0.5);
 
-        this.makeText(INTERNAL_WIDTH / 2 - 180, 360,
-            'PRESS SPACE TO SET SAIL!', 42, '#FFFFFF').setOrigin(0.5);
+        this.makeText(MAIN_CX, 390, 'PRESS SPACE TO SET SAIL!', 46, '#FFFFFF')
+            .setOrigin(0.5);
 
-        this.makeText(INTERNAL_WIDTH / 2 - 180, 430,
-            'Press L to sign out', 22, '#CCCCCC').setOrigin(0.5);
+        this.makeText(MAIN_CX, 470, 'Press L to sign out', 22, '#CCCCCC')
+            .setOrigin(0.5);
 
-        // A short delay stops a SPACE held down from the failure screen
-        // launching a new run instantly.
-        this.time.delayedCall(300, () => {
-            this.input.keyboard.once('keydown-SPACE', () => {
-                this.scene.start('GameScene');
-            });
-        });
+        this.startKey = this.input.keyboard.addKey(
+            Phaser.Input.Keyboard.KeyCodes.SPACE);
 
-        this.input.keyboard.once('keydown-L', () => {
-            Auth.logout();
+        // Brief lockout so a SPACE held from the failure screen does not
+        // launch a new run the instant this scene appears.
+        this.time.delayedCall(300, () => { this.canStart = true; });
+
+        this.input.keyboard.once('keydown-L', () => Auth.logout());
+
+        this.input.on('pointerdown', () => {
+            if (this.canStart) this.scene.start('GameScene');
         });
     }
 
     // ----------------------------------------------------------------
-    // Leaderboard panel, right-hand side. Open endpoint, so it renders
-    // whether or not the visitor is signed in.
+    // Leaderboard panel. Open endpoint, so it renders for signed-out
+    // visitors too.
     // ----------------------------------------------------------------
     async renderLeaderboard() {
-        const panelX = INTERNAL_WIDTH - 330;
+        // Column positions within the panel, as offsets from its centre.
+        const rankX = PANEL_CX - 150;
+        const nameX = PANEL_CX - 105;
+        const scoreX = PANEL_CX + 150;
+        const firstRowY = 175;
+        const rowHeight = 44;
 
-        this.makeText(panelX, 90, 'TOP PIRATES', 34, '#FFD700').setOrigin(0.5);
+        this.makeText(PANEL_CX, 95, 'TOP PIRATES', 36, '#FFD700').setOrigin(0.5);
 
-        const status = this.makeText(panelX, 150, 'Loading...', 22, '#CCCCCC')
+        const status = this.makeText(PANEL_CX, 175, 'Loading...', 22, '#CCCCCC')
             .setOrigin(0.5);
 
         const entries = await Scores.leaderboard();
+
+        // The player may have started a run while this was in flight.
+        if (!this.scene.isActive()) return;
 
         if (entries === null) {
             status.setText('Leaderboard unavailable');
@@ -125,21 +180,20 @@ class TitleScene extends Phaser.Scene {
         const me = Auth.isSignedIn() ? Auth.getUsername() : null;
 
         entries.slice(0, 10).forEach((entry, i) => {
-            const isMe = entry.username === me;
-            const color = isMe ? '#00FF88' : '#FFFFFF';
-            const y = 145 + (i * 42);
+            const color = entry.username === me ? '#00FF88' : '#FFFFFF';
+            const y = firstRowY + (i * rowHeight);
 
-            this.makeText(panelX - 140, y,
-                `${entry.rank}.`, 24, color).setOrigin(0, 0.5);
+            this.makeText(rankX, y, `${entry.rank}.`, 24, color)
+                .setOrigin(0, 0.5);
 
-            // Long usernames would otherwise run into the score column.
-            const name = entry.username.length > 14
-                ? entry.username.slice(0, 13) + '\u2026'
+            // Long names would otherwise collide with the score column.
+            const name = entry.username.length > 13
+                ? entry.username.slice(0, 12) + '\u2026'
                 : entry.username;
 
-            this.makeText(panelX - 100, y, name, 24, color).setOrigin(0, 0.5);
-            this.makeText(panelX + 140, y,
-                String(entry.score), 24, color).setOrigin(1, 0.5);
+            this.makeText(nameX, y, name, 24, color).setOrigin(0, 0.5);
+            this.makeText(scoreX, y, String(entry.score), 24, color)
+                .setOrigin(1, 0.5);
         });
     }
 
