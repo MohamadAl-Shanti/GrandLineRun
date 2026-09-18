@@ -3,18 +3,9 @@
 const config = {
     type: Phaser.AUTO,
 
-    // Anything not covered by the game canvas is painted with this, so the
-    // letterbox bars are black rather than whatever the page background is.
     backgroundColor: '#000000',
 
     scale: {
-        // FIT preserves the 2:1 aspect ratio and scales to the largest size
-        // that fits the window. The internal resolution stays 1400x700, so
-        // physics is untouched at any window size.
-        //
-        // Swap to Phaser.Scale.ENVELOP to fill the window edge to edge with
-        // no bars at all — but it crops the long axis, so hostiles and meat
-        // can sit in areas you cannot see. FIT is the safer default.
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
         parent: 'game-container',
@@ -47,12 +38,23 @@ const config = {
             fps: 60,
             fixedStep: true,
             timeScale: 1,
-            debug: false // flip to true to see the real hitboxes
+            debug: false // flip to true to see Phaser's own hitbox overlay
         }
     }
 };
 
-var game = new Phaser.Game(config);
+// Auth.init() must finish BEFORE Phaser boots. Coming back from the Cognito
+// login page the URL carries ?code=..., and init() exchanges it for tokens.
+// If the title scene rendered first it would decide the user is signed out
+// and show the sign-in prompt to someone who just signed in.
+(async () => {
+    try {
+        await Auth.init();
+    } catch (err) {
+        console.error('Auth init failed, continuing signed out:', err);
+    }
+    window.game = new Phaser.Game(config);
+})();
 
 // Arrow keys and space scroll the page by default, which reads as input lag
 // and can jolt the canvas out of view on a short window.

@@ -60,8 +60,6 @@ class GameScene extends Phaser.Scene {
         this.refreshScoreText();
 
         // --- 6. HITBOX OVERLAY --------------------------------------------
-        // Depth 6 sits above the sprites (player is 5) but below the
-        // game-over overlay (11), so it never draws over the failure screen.
         this.hitboxGfx = this.add.graphics().setDepth(6);
         this.showHitboxes = SHOW_HITBOXES;
 
@@ -74,7 +72,6 @@ class GameScene extends Phaser.Scene {
         if (!this.isGameOver) {
             this.handlePlayerMovement();
         }
-        // Keeps drawing after death so the fatal overlap stays visible.
         this.drawHitboxes();
     }
 
@@ -82,10 +79,6 @@ class GameScene extends Phaser.Scene {
     // HITBOX OVERLAY
     // ====================================================================
 
-    // Draws the ACTUAL physics bodies rather than a guess at where they are.
-    // body.x / body.y are the body's top-left in world coordinates, so what
-    // is drawn here is exactly what the collision test uses. If a box looks
-    // wrong, the hitbox IS wrong.
     drawHitboxes() {
         const g = this.hitboxGfx;
         g.clear();
@@ -99,10 +92,10 @@ class GameScene extends Phaser.Scene {
             g.strokeRect(body.x, body.y, body.width, body.height);
         };
 
-        box(this.player.body, 0x00FF88);                                 // green
-        this.enemies.getChildren().forEach(e => box(e.body, 0xFF3355));  // red
+        box(this.player.body, 0x00FF88);
+        this.enemies.getChildren().forEach(e => box(e.body, 0xFF3355));
         this.treasures.getChildren().forEach(t => {
-            if (t.active) box(t.body, 0xFFD700);                         // gold
+            if (t.active) box(t.body, 0xFFD700);
         });
     }
 
@@ -110,36 +103,18 @@ class GameScene extends Phaser.Scene {
     // SIZING HELPERS
     // ====================================================================
 
-    // Sets the displayed size and gives the sprite a hitbox that is exactly
-    // `hitScale` of that size, centred on the art.
-    //
-    // The body size is given as a fraction of the FRAME, never in screen
-    // pixels. Phaser computes body.width = sourceWidth * scaleX internally,
-    // so frameWidth * hitScale always resolves to displayWidth * hitScale —
-    // correct for every texture regardless of its source resolution, and
-    // correct even on the frame where the sprite was just created or
-    // re-skinned (when the body's cached scale can still be stale).
     fitSprite(sprite, visualW, visualH, hitScale) {
         sprite.setDisplaySize(visualW, visualH);
-
         const fw = sprite.frame.realWidth;
         const fh = sprite.frame.realHeight;
-
         sprite.body.setSize(fw * hitScale, fh * hitScale, true);
     }
 
-    // Swap a texture without losing the display size or the hitbox.
-    // setTexture keeps the scale but swaps the frame underneath it, so both
-    // have to be re-applied or the sprite silently changes size.
     setSkin(sprite, textureKey, visualW, visualH, hitScale) {
         sprite.setTexture(textureKey);
         this.fitSprite(sprite, visualW, visualH, hitScale);
     }
 
-    // When the hitbox is smaller than the art, clamping the BODY to the
-    // screen lets the art hang off the edge. Expanding the bounds by the
-    // difference makes the sprite stop flush with the edge instead. At
-    // hitScale 1.0 the padding is zero and the default world bounds are used.
     applyVisualBounds(sprite, visualW, visualH, hitScale) {
         const padX = (visualW - visualW * hitScale) / 2;
         const padY = (visualH - visualH * hitScale) / 2;
@@ -151,9 +126,6 @@ class GameScene extends Phaser.Scene {
             INTERNAL_HEIGHT + padY * 2));
     }
 
-    // Backgrounds are stretched to the full internal canvas, which is what
-    // pygame's transform.scale did. Must be re-applied after every
-    // setTexture for the same reason as setSkin.
     stretchToScreen(image) {
         image.setDisplaySize(INTERNAL_WIDTH, INTERNAL_HEIGHT);
     }
@@ -180,8 +152,6 @@ class GameScene extends Phaser.Scene {
         let dx = 0;
         let dy = 0;
 
-        // Additive, not else-if: pressing both directions cancels out, the
-        // same as pygame's separate `if` statements.
         if (this.cursors.left.isDown || this.wasd.left.isDown) dx -= 1;
         if (this.cursors.right.isDown || this.wasd.right.isDown) dx += 1;
         if (this.cursors.up.isDown || this.wasd.up.isDown) dy -= 1;
@@ -213,7 +183,6 @@ class GameScene extends Phaser.Scene {
             if (d >= minDistance) return { x, y };
         }
 
-        // Cornered player — fall back to the farthest corner.
         const corners = [
             { x: halfW, y: halfH },
             { x: INTERNAL_WIDTH - halfW, y: halfH },
@@ -249,7 +218,6 @@ class GameScene extends Phaser.Scene {
             TREASURE_VISUAL_SIZE, TREASURE_VISUAL_SIZE, TREASURE_HITBOX_SCALE);
         treasure.setDepth(3);
 
-        // Always diagonal, as in pygame.
         treasure.setVelocity(
             this.randomSign() * TREASURE_SPEED,
             this.randomSign() * TREASURE_SPEED);
@@ -309,9 +277,6 @@ class GameScene extends Phaser.Scene {
 
         const villainKey = `villain${nextArc.villain_index + 1}`;
 
-        // Preserve direction, reset magnitude per axis. Normalizing here (as
-        // the original did) left veteran enemies at 0.707x the per-axis speed
-        // of freshly spawned ones, so the fleet desynced a little each arc.
         this.enemies.getChildren().forEach((enemy) => {
             if (!enemy.body) return;
             const sx = Math.sign(enemy.body.velocity.x) || 1;
@@ -342,13 +307,18 @@ class GameScene extends Phaser.Scene {
         this.physics.pause();
         player.setTint(0xff0000);
 
-        // Draw the failure screen immediately from the local quote, then
-        // upgrade it if the API answers. Blocking the screen on the fetch
-        // meant a slow network left the player staring at a frozen game.
+        // Draw the failure screen immediately from the local quote, then let
+        // both network calls fill in asynchronously. Neither blocks the UI.
         const localQuote = ONE_PIECE_ARCS[this.currentArcIndex].quote;
         this.displayArcFailureScreen(localQuote);
 
+        this.fetchVillainQuote();
+        this.submitScore();
+    }
+
+    fetchVillainQuote() {
         const villainId = ONE_PIECE_ARCS[this.currentArcIndex].villain_index + 1;
+
         fetch(`${API_ENDPOINT}?VillainId=${villainId}`)
             .then(response => response.json())
             .then(data => {
@@ -359,6 +329,36 @@ class GameScene extends Phaser.Scene {
             .catch(error => {
                 console.warn('Quote API unavailable, using local quote.', error);
             });
+    }
+
+    // The server decides whether this beat the player's record; the client
+    // just reports the score and displays the verdict.
+    async submitScore() {
+        const result = await Scores.submit(this.score);
+
+        // The player may have restarted before the response arrived.
+        if (!this.highScoreText || !this.highScoreText.active) return;
+
+        if (!result.ok) {
+            const message = result.reason === 'expired'
+                ? 'Session expired - score not saved'
+                : 'Score could not be saved';
+            this.highScoreText.setText(message).setColor('#FF9900');
+            return;
+        }
+
+        if (result.newHighScore) {
+            this.highScoreText.setText('NEW PERSONAL BEST!').setColor('#FFD700');
+            this.tweens.add({
+                targets: this.highScoreText,
+                scale: { from: 1, to: 1.15 },
+                duration: 400,
+                yoyo: true,
+                repeat: 2
+            });
+        } else {
+            this.highScoreText.setText('Score saved').setColor('#00FF88');
+        }
     }
 
     displayArcFailureScreen(quote) {
@@ -374,7 +374,7 @@ class GameScene extends Phaser.Scene {
         villainImage.setDisplaySize(VILLAIN_FAIL_SIZE, VILLAIN_FAIL_SIZE);
 
         this.quoteText = this.makeText(
-            INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2 - 170,
+            INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2 - 190,
             `"${quote}"`, 42, '#FF4136', 900
         ).setOrigin(0.5).setAlign('center').setDepth(12);
 
@@ -386,20 +386,24 @@ class GameScene extends Phaser.Scene {
             ? '#' + COLORS.GOLD.toString(16).padStart(6, '0')
             : '#FFFFFF';
 
-        this.makeText(INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2 - 40,
+        this.makeText(INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2 - 60,
             rewardMessage, 38, rewardColor, 1100)
             .setOrigin(0.5).setAlign('center').setDepth(12);
 
-        this.makeText(INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2 + 50,
+        this.makeText(INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2 + 30,
             `Final Score: ${this.score} | Failed Arc: ${lastArc.name}`, 44, '#FFFFFF')
             .setOrigin(0.5).setDepth(12);
 
-        this.makeText(INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2 + 150,
+        // Placeholder, replaced by submitScore() when the API answers.
+        this.highScoreText = this.makeText(
+            INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2 + 100,
+            'Saving score...', 32, '#CCCCCC'
+        ).setOrigin(0.5).setDepth(12);
+
+        this.makeText(INTERNAL_WIDTH / 2, INTERNAL_HEIGHT / 2 + 180,
             'Press SPACE to Restart', 44, '#2ECC40')
             .setOrigin(0.5).setDepth(12);
 
-        // Short delay so a SPACE still held from a previous screen doesn't
-        // skip straight past the results.
         this.time.delayedCall(400, () => {
             this.input.keyboard.once('keydown-SPACE', () => {
                 this.scene.start('TitleScene');
